@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
@@ -16,6 +16,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Handle invite / recovery links that carry tokens in the URL hash
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash.includes('type=invite') && !hash.includes('type=recovery')) return
+
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
+        subscription.unsubscribe()
+        router.replace('/setup-password')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Loader2, KeyRound } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,34 +12,64 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
 export default function SetupPasswordPage() {
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+
+  // Wait for Supabase to process the hash-based token before showing the form
+  useEffect(() => {
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setReady(true)
+        subscription.unsubscribe()
+      }
+    })
+    // Also check if a session already exists (e.g. token was already processed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setReady(true)
+        subscription.unsubscribe()
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (password.length < 8) {
       toast.error('La contraseña debe tener al menos 8 caracteres')
       return
     }
+
     if (password !== confirm) {
       toast.error('Las contraseñas no coinciden')
       return
     }
+
     setLoading(true)
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({
-        password,
-        data: { password_set: true },
-      })
-      if (error) throw error
-      toast.success('Contraseña establecida correctamente')
-      window.location.href = '/'
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al guardar la contraseña')
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+      toast.error(error.message)
       setLoading(false)
+      return
     }
+
+    toast.success('Contraseña establecida correctamente')
+    window.location.href = '/'
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center w-full py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    )
   }
 
   return (
@@ -47,19 +79,28 @@ export default function SetupPasswordPage() {
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      {/* Icon + heading */}
+      {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-8">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
-          <KeyRound className="h-8 w-8" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Bienvenido a QRtrol</h1>
-          <p className="text-sm text-zinc-500 mt-1">Establece tu contraseña para continuar</p>
-        </div>
+        <Image
+          src="/logo.jpg"
+          alt="QRtrol"
+          width={300}
+          height={300}
+          className="rounded-2xl object-contain w-24 h-auto sm:w-32 md:w-40"
+          priority
+        />
+        <p className="text-sm text-zinc-500">Control horario por QR dinámico</p>
       </div>
 
       {/* Card */}
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 p-6 shadow-sm">
+        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+          Crear contraseña
+        </h1>
+        <p className="text-sm text-zinc-500 mb-5">
+          Establece una contraseña para acceder a tu cuenta.
+        </p>
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="space-y-1.5">
             <Label htmlFor="password">Nueva contraseña</Label>
@@ -71,7 +112,6 @@ export default function SetupPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              autoFocus
             />
           </div>
 
@@ -90,9 +130,12 @@ export default function SetupPasswordPage() {
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando…</>
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando…
+              </>
             ) : (
-              'Establecer contraseña'
+              'Guardar contraseña'
             )}
           </Button>
         </form>

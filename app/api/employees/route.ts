@@ -53,8 +53,10 @@ export async function POST(request: NextRequest) {
 
   // Invite via Supabase admin (requires service-role)
   const adminClient = createAdminClient()
+  const origin = new URL(request.url).origin
   const { data: invited, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: { full_name, company_id: adminProfile.company_id, role },
+    redirectTo: `${origin}/setup-password`,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -2,45 +2,61 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Supabase OAuth callback handler — exchanges the code for a session.
+// Supabase OAuth / invite callback handler
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const tokenHash = searchParams.get('token_hash')
+  const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/'
 
-  if (code) {
-    const cookieStore = await cookies()
+  const cookieStore = await cookies()
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
         },
-      }
-    )
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
+  // Invitation link — verify token and redirect to password setup
+  if (tokenHash && type === 'invite') {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'invite' })
+    if (!error) {
+      return NextResponse.redirect(`${origin}/setup-password`)
+    }
+    return NextResponse.redirect(`${origin}/login?error=invalid_invite`)
+  }
 
-    if (!error && user) {
-      // Invited users haven't set a password yet — send them to the setup page
-      const isInvited = !!user.user_metadata?.invited_at
-      const hasSetPassword = !!user.user_metadata?.password_set
-      if (isInvited && !hasSetPassword) {
-        return NextResponse.redirect(`${origin}/setup-password`)
-      }
+  // Recovery / magic-link — verify token and redirect accordingly
+  if (tokenHash && (type === 'recovery' || type === 'magiclink' || type === 'email')) {
+    const otpType = type as 'recovery' | 'magiclink' | 'email'
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType })
+    if (!error) {
+      const destination = type === 'recovery' ? '/setup-password' : next
+      return NextResponse.redirect(`${origin}${destination}`)
+    }
+    return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+  }
+
+  // PKCE code exchange (OAuth providers)
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Invalid or missing code — redirect back to login with an error flag
+  // Invalid or missing token — redirect back to login with an error flag
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }
