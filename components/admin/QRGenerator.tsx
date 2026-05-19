@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { RefreshCw, CheckCircle2, Clock } from 'lucide-react'
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function QRGenerator({ companyId, durationSeconds = 20 }: Props) {
+  const router = useRouter()
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -28,6 +30,13 @@ export function QRGenerator({ companyId, durationSeconds = 20 }: Props) {
     const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000)
     return () => clearInterval(id)
   }, [secondsLeft])
+
+  // Refresh page data when QR expires so admin stats update automatically
+  useEffect(() => {
+    if (secondsLeft === 0 && qrDataUrl !== null) {
+      router.refresh()
+    }
+  }, [secondsLeft, qrDataUrl, router])
 
   const generate = useCallback(async () => {
     setLoading(true)
