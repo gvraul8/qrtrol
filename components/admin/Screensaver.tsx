@@ -62,7 +62,7 @@ export function Screensaver({ isActive, companyName, logoUrl }: Props) {
             {/* Company */}
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={companyName} className="h-48 w-auto max-w-sm object-contain" />
+              <img src={logoUrl} alt={companyName} className="h-72 w-auto max-w-lg object-contain" />
             ) : (
               <p className="text-lg font-semibold text-zinc-300">{companyName}</p>
             )}

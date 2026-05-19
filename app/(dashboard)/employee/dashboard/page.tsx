@@ -76,7 +76,7 @@ export default async function EmployeeDashboardPage() {
           }
         </div>
         <div>
-          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{isActive ? 'Trabajando ahora' : 'Fuera de oficina'}</p>
+          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{isActive ? 'Trabajando ahora' : 'Sin fichar'}</p>
           {lastEntry && (
             <p className="text-xs text-zinc-500">Último fichaje: {formatDateTime(lastEntry.created_at)}</p>
           )}

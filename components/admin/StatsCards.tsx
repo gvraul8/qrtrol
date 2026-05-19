@@ -44,7 +44,7 @@ export function StatsCards({ totalEmployees, entriesTotal, activeNow, avgMinutes
     },
     {
       label: 'Media hoy',
-      value: avgMinutesToday ? `${Math.round(avgMinutesToday / 60)}h ${avgMinutesToday % 60}m` : '—',
+      value: avgMinutesToday ? `${Math.floor(avgMinutesToday / 60)}h ${avgMinutesToday % 60}m` : '—',
       icon: <Clock className="h-5 w-5" />,
       color: 'text-violet-400',
       sub: 'por empleado',

@@ -88,12 +88,25 @@ export default async function AdminDashboardPage() {
     hours: Math.round(d.minutes / 60 * 10) / 10,
   }))
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const entriesCount = todayEntries.filter(e => e.type === 'entry').length
-  const avgMinutes = entriesCount > 0
-    ? Math.round((Date.now() - today.getTime()) / 1000 / 60 / entriesCount)
-    : 0
+  // Average worked minutes today: pair entry+exit per user
+  const userTodayMap = new Map<string, typeof todayEntries>()
+  for (const e of [...todayEntries].reverse()) { // ascending order
+    if (!userTodayMap.has(e.user_id)) userTodayMap.set(e.user_id, [])
+    userTodayMap.get(e.user_id)!.push(e)
+  }
+  let totalWorkedMinutes = 0
+  let usersWithTime = 0
+  for (const [, entries] of userTodayMap) {
+    let userMinutes = 0
+    for (let i = 0; i < entries.length - 1; i++) {
+      if (entries[i].type === 'entry' && entries[i + 1].type === 'exit') {
+        const ms = new Date(entries[i + 1].created_at).getTime() - new Date(entries[i].created_at).getTime()
+        userMinutes += Math.round(ms / 60000)
+      }
+    }
+    if (userMinutes > 0) { totalWorkedMinutes += userMinutes; usersWithTime++ }
+  }
+  const avgMinutes = usersWithTime > 0 ? Math.round(totalWorkedMinutes / usersWithTime) : 0
 
   return (
     <div className="space-y-6 animate-fade-in">

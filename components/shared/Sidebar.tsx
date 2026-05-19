@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -41,14 +42,14 @@ export function Sidebar({ role, companyName }: Props) {
   return (
     <aside className="hidden md:flex h-full w-56 flex-col border-r border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-gray-200 dark:border-zinc-800">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
-          <QrCode className="h-4 w-4 text-white" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-zinc-950 dark:text-zinc-50 truncate">{companyName}</p>
-          <p className="text-[10px] text-zinc-500">QRtrol</p>
-        </div>
+      <div className="px-3 py-4 border-b border-gray-200 dark:border-zinc-800">
+        <Image
+          src="/logo.png"
+          alt="QRtrol"
+          width={200}
+          height={200}
+          className="rounded-2xl object-contain w-full h-auto"
+        />
       </div>
 
       {/* Nav */}

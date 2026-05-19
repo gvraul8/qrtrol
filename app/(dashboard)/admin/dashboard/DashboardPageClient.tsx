@@ -75,7 +75,7 @@ export function DashboardPageClient({ companyId, companyName, durationSeconds, l
               <img
                 src={logoUrl}
                 alt={companyName}
-                className="h-14 w-14 rounded-xl object-contain shrink-0"
+                className="h-20 w-20 rounded-2xl object-contain shrink-0"
               />
             )}
             <div>

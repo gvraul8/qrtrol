@@ -58,7 +58,7 @@ export default function LoginPage() {
       {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-8">
         <Image
-          src="/logo.jpg"
+          src="/logo.png"
           alt="QRtrol"
           width={300}
           height={300}
