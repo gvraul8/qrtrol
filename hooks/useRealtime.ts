@@ -9,14 +9,20 @@ export function useRealtimeEntries(
   onInsert: (entry: TimeEntry) => void
 ) {
   const supabaseRef = useRef(createClient())
-  const mountKeyRef = useRef(0)
+  // Random ID per component instance — avoids name collisions after HMR or remounts
+  const instanceId = useRef(Math.random().toString(36).slice(2))
   const stableOnInsert = useCallback(onInsert, [onInsert])
 
   useEffect(() => {
     const supabase = supabaseRef.current
-    const key = ++mountKeyRef.current
+    const channelName = `te:${companyId}:${instanceId.current}`
+
+    // Remove any stale channel with this name before subscribing
+    const stale = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`)
+    if (stale) supabase.removeChannel(stale)
+
     const channel = supabase
-      .channel(`time_entries:company:${companyId}:${key}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

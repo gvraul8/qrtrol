@@ -7,6 +7,7 @@ import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { createClient } from '@/lib/supabase/client'
 
 interface Company {
   id: string
@@ -17,7 +18,7 @@ interface Company {
   created_at: string
 }
 
-interface Props { company: Company }
+interface Props { company: Company; userEmail: string }
 
 interface FormValues {
   name: string
@@ -25,9 +26,13 @@ interface FormValues {
   qr_duration_seconds: number
 }
 
-export function SettingsPageClient({ company }: Props) {
+export function SettingsPageClient({ company, userEmail }: Props) {
   const [saving, setSaving] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(company.logo_url)
+  const [pwSaving, setPwSaving] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -54,6 +59,26 @@ export function SettingsPageClient({ company }: Props) {
     localStorage.removeItem('qrtrol_logo_url')
     if (fileRef.current) fileRef.current.value = ''
     toast.success('Logo eliminado')
+  }
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPw.length < 8) { toast.error('La nueva contraseña debe tener al menos 8 caracteres'); return }
+    if (newPw !== confirmPw) { toast.error('Las contraseñas no coinciden'); return }
+    setPwSaving(true)
+    try {
+      const supabase = createClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({ email: userEmail, password: currentPw })
+      if (authError) { toast.error('Contraseña actual incorrecta'); return }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPw })
+      if (updateError) throw updateError
+      toast.success('Contraseña actualizada')
+      setCurrentPw(''); setNewPw(''); setConfirmPw('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al cambiar la contraseña')
+    } finally {
+      setPwSaving(false)
+    }
   }
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
@@ -168,6 +193,56 @@ export function SettingsPageClient({ company }: Props) {
 
           <Button type="submit" disabled={saving} className="w-full">
             {saving ? 'Guardando…' : 'Guardar ajustes'}
+          </Button>
+        </form>
+      </div>
+    </div>
+
+      {/* Password change */}
+      <div className="rounded-xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 p-6">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Cambiar contraseña</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">Necesitas introducir tu contraseña actual para confirmar el cambio</p>
+        </div>
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="currentPw">Contraseña actual</Label>
+            <Input
+              id="currentPw"
+              type="password"
+              value={currentPw}
+              onChange={e => setCurrentPw(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="newPw">Nueva contraseña</Label>
+            <Input
+              id="newPw"
+              type="password"
+              value={newPw}
+              onChange={e => setNewPw(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              required
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPw">Confirmar nueva contraseña</Label>
+            <Input
+              id="confirmPw"
+              type="password"
+              value={confirmPw}
+              onChange={e => setConfirmPw(e.target.value)}
+              placeholder="Repite la nueva contraseña"
+              required
+              autoComplete="new-password"
+            />
+          </div>
+          <Button type="submit" disabled={pwSaving} variant="outline" className="w-full">
+            {pwSaving ? 'Actualizando…' : 'Actualizar contraseña'}
           </Button>
         </form>
       </div>

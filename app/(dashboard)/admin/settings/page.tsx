@@ -21,5 +21,5 @@ export default async function AdminSettingsPage() {
     .single()
   if (!company) redirect('/login')
 
-  return <SettingsPageClient company={company} />
+  return <SettingsPageClient company={company} userEmail={user.email ?? ''} />
 }
