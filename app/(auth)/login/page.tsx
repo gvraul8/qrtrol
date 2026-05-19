@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { QrCode, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,13 +25,12 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      toast.error('Credenciales incorrectas')
+      toast.error(error.message)
       setLoading(false)
       return
     }
 
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
@@ -42,17 +42,18 @@ export default function LoginPage() {
     >
       {/* Logo */}
       <div className="flex flex-col items-center gap-3 mb-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600">
-          <QrCode className="h-6 w-6 text-white" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-zinc-50">QRtrol</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">Control horario por QR dinámico</p>
-        </div>
+        <Image
+          src="/logo.jpg"
+          alt="QRtrol"
+          width={300}
+          height={300}
+          className="rounded-2xl object-contain"          style={{ width: 88, height: 'auto' }}          priority
+        />
+        <p className="text-sm text-zinc-500">Control horario por QR dinámico</p>
       </div>
 
       {/* Card */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 p-6 shadow-sm">
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
@@ -87,7 +88,7 @@ export default function LoginPage() {
         </form>
       </div>
 
-      <p className="text-center text-xs text-zinc-600 mt-4">
+      <p className="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-4">
         ¿Sin cuenta? Contacta con tu administrador.
       </p>
     </motion.div>

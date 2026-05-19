@@ -180,7 +180,6 @@ export async function downloadPDF(
   month: string,
 ) {
   const { jsPDF } = await import('jspdf')
-  // @ts-expect-error: jspdf-autotable adds autoTable to jsPDF prototype
   const autoTable = (await import('jspdf-autotable')).default
   const { rows, totalMinutes, workingDays } = buildDailySummary(entries)
   const label = monthLabel(month)
