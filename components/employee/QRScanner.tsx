@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, CameraOff, CheckCircle2, XCircle, LogIn, LogOut } from 'lucide-react'
+import { Camera, CameraOff, CheckCircle2, XCircle, LogIn, LogOut, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
@@ -11,38 +11,20 @@ type ScanState = 'idle' | 'scanning' | 'confirming' | 'success' | 'error'
 interface Props {
   onSuccess?: (type: 'entry' | 'exit') => void
   autoStart?: boolean
+  fullscreen?: boolean
+  onClose?: () => void
 }
 
-export function QRScanner({ onSuccess, autoStart }: Props) {
-  const [state, setState] = useState<ScanState>('idle')
+export function QRScanner({ onSuccess, autoStart, fullscreen, onClose }: Props) {
+  const [state, setState] = useState<ScanState>(autoStart ? 'scanning' : 'idle')
   const [scannedToken, setScannedToken] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const scannerRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const startScan = async () => {
-    setState('scanning')
-    try {
-      const { Html5Qrcode } = await import('html5-qrcode')
-      const scanner = new Html5Qrcode('qr-scanner-container')
-      scannerRef.current = scanner
-
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        (decoded) => {
-          // Extract token from URL (/scan/{token}) or use raw value
-          const match = decoded.match(/\/scan\/([a-f0-9-]{36})/)
-          const token = match ? match[1] : decoded
-          handleScanned(token, scanner)
-        },
-        () => {} // ignore intermediate errors
-      )
-    } catch {
-      setState('idle')
-      toast.error('No se pudo acceder a la cámara')
-    }
-  }
+  // startScan only sets state — the useEffect below does the actual init
+  // once React has committed the DOM with #qr-scanner-container present.
+  const startScan = () => setState('scanning')
 
   const handleScanned = async (token: string, scanner: any) => {
     try {
@@ -55,7 +37,7 @@ export function QRScanner({ onSuccess, autoStart }: Props) {
 
   const registerEntry = async (type: 'entry' | 'exit') => {
     if (!scannedToken) return
-    setState('scanning') // loading state
+    setState('scanning') // triggers loading overlay (scannedToken still set)
     try {
       const res = await fetch('/api/qr/validate', {
         method: 'POST',
@@ -83,11 +65,50 @@ export function QRScanner({ onSuccess, autoStart }: Props) {
     setState('idle')
   }
 
-  // Auto-start camera when requested
+  // Initialize the camera AFTER React has rendered #qr-scanner-container.
+  // Only runs when state === 'scanning' and no token is pending validation.
   useEffect(() => {
-    if (autoStart) startScan()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (state !== 'scanning' || scannedToken !== null) return
+
+    let cancelled = false
+
+    const initScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode')
+        if (cancelled) return
+
+        // Ensure any previous instance is fully stopped before creating a new one
+        if (scannerRef.current) {
+          try { await scannerRef.current.stop() } catch {}
+          scannerRef.current = null
+        }
+
+        const scanner = new Html5Qrcode('qr-scanner-container')
+        if (cancelled) return
+        scannerRef.current = scanner
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: fullscreen ? { width: 280, height: 280 } : { width: 240, height: 240 } },
+          (decoded) => {
+            const match = decoded.match(/\/scan\/([a-f0-9-]{36})/)
+            const token = match ? match[1] : decoded
+            handleScanned(token, scanner)
+          },
+          () => {}
+        )
+      } catch {
+        if (!cancelled) {
+          setState('idle')
+          toast.error('No se pudo acceder a la cámara')
+        }
+      }
+    }
+
+    initScanner()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, scannedToken])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -98,6 +119,149 @@ export function QRScanner({ onSuccess, autoStart }: Props) {
     }
   }, [])
 
+  // ── FULLSCREEN MODE ──────────────────────────────────────────────────
+  if (fullscreen) {
+    // When registerEntry is called, state goes back to 'scanning' with scannedToken set
+    const isValidating = state === 'scanning' && scannedToken !== null
+
+    return (
+      <div className="flex-1 flex flex-col min-h-0">
+        <AnimatePresence mode="wait">
+
+          {(state === 'idle' || state === 'scanning') && (
+            <motion.div
+              key="fs-camera"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col relative"
+            >
+              <div
+                id="qr-scanner-container"
+                ref={containerRef}
+                className="w-full"
+                style={{ height: 'calc(100dvh - 64px)' }}
+              />
+              {/* Idle: camera not started yet */}
+              {state === 'idle' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  <div className="flex flex-col items-center gap-3">
+                    <Camera className="h-14 w-14 text-zinc-600 animate-pulse" />
+                    <p className="text-zinc-500 text-sm">Iniciando cámara…</p>
+                  </div>
+                </div>
+              )}
+              {/* Validating spinner overlay */}
+              {isValidating && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-10 w-10 text-white animate-spin" />
+                    <p className="text-zinc-400 text-sm">Registrando fichaje…</p>
+                  </div>
+                </div>
+              )}
+              {/* Cancel button */}
+              {!isValidating && (
+                <button
+                  onClick={() => { reset(); onClose?.() }}
+                  className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/70 text-sm flex items-center gap-2 transition-colors"
+                >
+                  <CameraOff className="h-4 w-4" />
+                  Cancelar
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {state === 'confirming' && (
+            <motion.div
+              key="fs-confirming"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              className="flex-1 flex flex-col items-center justify-center gap-8 px-8"
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-900/40 border-2 border-blue-500/40">
+                <CheckCircle2 className="h-10 w-10 text-blue-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-white text-2xl font-bold">QR escaneado</p>
+                <p className="text-zinc-400 text-sm mt-1">¿Qué deseas registrar?</p>
+              </div>
+              <div className="w-full flex flex-col gap-3">
+                <button
+                  onClick={() => registerEntry('entry')}
+                  className="w-full flex items-center justify-center gap-3 h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-lg font-semibold transition-colors"
+                >
+                  <LogIn className="h-6 w-6" />
+                  Entrada
+                </button>
+                <button
+                  onClick={() => registerEntry('exit')}
+                  className="w-full flex items-center justify-center gap-3 h-16 rounded-2xl bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-900 text-white text-lg font-semibold border border-zinc-700 transition-colors"
+                >
+                  <LogOut className="h-6 w-6" />
+                  Salida
+                </button>
+              </div>
+              <button
+                onClick={() => { reset(); onClose?.() }}
+                className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+            </motion.div>
+          )}
+
+          {state === 'success' && (
+            <motion.div
+              key="fs-success"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="flex-1 flex flex-col items-center justify-center gap-6 px-8"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 400, damping: 18 }}
+                className="flex h-32 w-32 items-center justify-center rounded-full bg-emerald-900/40 border-2 border-emerald-500/50"
+              >
+                <CheckCircle2 className="h-16 w-16 text-emerald-400" />
+              </motion.div>
+              <p className="text-2xl font-bold text-emerald-400 text-center">{message}</p>
+            </motion.div>
+          )}
+
+          {state === 'error' && (
+            <motion.div
+              key="fs-error"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col items-center justify-center gap-6 px-8"
+            >
+              <div className="flex h-32 w-32 items-center justify-center rounded-full bg-red-900/40 border-2 border-red-500/50">
+                <XCircle className="h-16 w-16 text-red-400" />
+              </div>
+              <p className="text-2xl font-bold text-red-400 text-center">{message}</p>
+              <button
+                onClick={reset}
+                className="px-8 py-3 rounded-2xl border border-zinc-600 text-zinc-300 hover:bg-zinc-800 text-base transition-colors"
+              >
+                Intentar de nuevo
+              </button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+    )
+  }
+
+  // ── INLINE MODE (página de escaneo) ─────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-6">
       <AnimatePresence mode="wait">

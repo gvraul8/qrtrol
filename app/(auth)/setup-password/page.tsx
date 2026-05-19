@@ -86,7 +86,7 @@ export default function SetupPasswordPage() {
           alt="QRtrol"
           width={300}
           height={300}
-          className="rounded-2xl object-contain w-24 h-auto sm:w-32 md:w-40"
+          className="rounded-2xl object-contain w-36 h-auto sm:w-44 md:w-56"
           priority
         />
         <p className="text-sm text-zinc-500">Control horario por QR dinámico</p>
