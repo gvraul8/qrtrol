@@ -196,7 +196,6 @@ export function SettingsPageClient({ company, userEmail }: Props) {
           </Button>
         </form>
       </div>
-    </div>
 
       {/* Password change */}
       <div className="rounded-xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/60 p-6">

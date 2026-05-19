@@ -28,9 +28,15 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
+    if (!error && user) {
+      // Invited users haven't set a password yet — send them to the setup page
+      const isInvited = !!user.user_metadata?.invited_at
+      const hasSetPassword = !!user.user_metadata?.password_set
+      if (isInvited && !hasSetPassword) {
+        return NextResponse.redirect(`${origin}/setup-password`)
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

@@ -47,7 +47,8 @@ export default function LoginPage() {
           alt="QRtrol"
           width={300}
           height={300}
-          className="rounded-2xl object-contain"          style={{ width: 88, height: 'auto' }}          priority
+          className="rounded-2xl object-contain w-24 h-auto sm:w-32 md:w-40"
+          priority
         />
         <p className="text-sm text-zinc-500">Control horario por QR dinámico</p>
       </div>
