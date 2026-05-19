@@ -1,12 +1,30 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { QRPageClient } from './QRPageClient'
-import { MOCK_COMPANY } from '@/lib/mock-data'
 
-export default function AdminQRPage() {
+export default async function AdminQRPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+  if (!profile) redirect('/login')
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('id, name, qr_duration_seconds')
+    .eq('id', profile.company_id)
+    .single()
+
   return (
     <QRPageClient
-      companyId={MOCK_COMPANY.id}
-      companyName={MOCK_COMPANY.name}
-      durationSeconds={MOCK_COMPANY.qr_duration_seconds}
+      companyId={company?.id ?? profile.company_id}
+      companyName={company?.name ?? 'QRtrol'}
+      durationSeconds={company?.qr_duration_seconds ?? 20}
     />
   )
 }

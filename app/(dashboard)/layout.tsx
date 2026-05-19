@@ -1,19 +1,36 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { Header } from '@/components/shared/Header'
 import { BottomNav } from '@/components/employee/BottomNav'
-import { MOCK_CURRENT_EMPLOYEE, MOCK_COMPANY } from '@/lib/mock-data'
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const profile = MOCK_CURRENT_EMPLOYEE
-  const companyName = MOCK_COMPANY.name
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+  if (!profile) redirect('/login')
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name')
+    .eq('id', profile.company_id)
+    .single()
+
+  const companyName = company?.name ?? 'QRtrol'
   const isEmployee = profile.role === 'employee'
 
   return (
-      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-zinc-950">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-zinc-950">
       <Sidebar role={profile.role} companyName={companyName} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header profile={profile} title={companyName} />

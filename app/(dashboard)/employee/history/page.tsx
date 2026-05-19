@@ -1,12 +1,31 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime } from '@/lib/utils'
 import { History } from 'lucide-react'
-import { MOCK_MY_ENTRIES, MOCK_CURRENT_EMPLOYEE } from '@/lib/mock-data'
 import { DownloadSection } from '@/components/employee/DownloadSection'
+import type { TimeEntry } from '@/types/time-entry.types'
 
-export default function EmployeeHistoryPage() {
-  const entries = MOCK_MY_ENTRIES
-  const profile = MOCK_CURRENT_EMPLOYEE
+export default async function EmployeeHistoryPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+  if (!profile) redirect('/login')
+
+  const { data: entriesRaw } = await supabase
+    .from('time_entries')
+    .select('id, user_id, company_id, qr_session_id, type, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const entries = (entriesRaw ?? []) as TimeEntry[]
 
   return (
     <div className="space-y-6 animate-fade-in">

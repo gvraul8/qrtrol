@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { TimeEntry } from '@/types/time-entry.types'
 
@@ -8,12 +8,15 @@ export function useRealtimeEntries(
   companyId: string,
   onInsert: (entry: TimeEntry) => void
 ) {
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient())
+  const mountKeyRef = useRef(0)
   const stableOnInsert = useCallback(onInsert, [onInsert])
 
   useEffect(() => {
+    const supabase = supabaseRef.current
+    const key = ++mountKeyRef.current
     const channel = supabase
-      .channel(`time_entries:company:${companyId}`)
+      .channel(`time_entries:company:${companyId}:${key}`)
       .on(
         'postgres_changes',
         {
@@ -29,5 +32,5 @@ export function useRealtimeEntries(
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [companyId, stableOnInsert, supabase])
+  }, [companyId, stableOnInsert])
 }

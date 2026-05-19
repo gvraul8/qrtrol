@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
-import { mockSupabaseClient } from './mock'
 
 /**
  * Privileged Supabase client using the service role key.
@@ -8,10 +7,8 @@ import { mockSupabaseClient } from './mock'
  * NEVER import or expose this on the client side.
  */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!url || !serviceKey) return mockSupabaseClient
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
   return createClient<Database>(url, serviceKey, {
     auth: {

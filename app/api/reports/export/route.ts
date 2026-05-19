@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
   const { data: entries, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const rows = (entries ?? []).map((e: any) => ({
+  type Row = { Nombre: string; Email: string; Tipo: string; 'Fecha y hora': string }
+  const rows: Row[] = (entries ?? []).map((e: any) => ({
     Nombre: e.users?.full_name ?? '-',
     Email: e.users?.email ?? '-',
     Tipo: e.type === 'entry' ? 'Entrada' : 'Salida',
