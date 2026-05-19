@@ -6,17 +6,19 @@ import { QrCode, Users } from 'lucide-react'
 import { QRGenerator } from '@/components/admin/QRGenerator'
 import { ActiveWorkers } from '@/components/admin/ActiveWorkers'
 import { Screensaver } from '@/components/admin/Screensaver'
+import type { ActiveWorker } from '@/types/time-entry.types'
 
 interface Props {
   companyId: string
   companyName: string
   durationSeconds: number
   logoUrl: string | null
+  initialWorkers: ActiveWorker[]
 }
 
 const INACTIVITY_MS = 60_000
 
-export function DashboardPageClient({ companyId, companyName, durationSeconds, logoUrl: initialLogoUrl }: Props) {
+export function DashboardPageClient({ companyId, companyName, durationSeconds, logoUrl: initialLogoUrl, initialWorkers }: Props) {
   const [screensaverActive, setScreensaverActive] = useState(false)
   const [lastActivity, setLastActivity] = useState(0)
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
@@ -129,7 +131,7 @@ export function DashboardPageClient({ companyId, companyName, durationSeconds, l
                 <p className="text-xs text-zinc-500">Empleados activos hoy</p>
               </div>
             </div>
-            <ActiveWorkers companyId={companyId} />
+            <ActiveWorkers companyId={companyId} initialWorkers={initialWorkers} />
           </motion.div>
 
         </div>

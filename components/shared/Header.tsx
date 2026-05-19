@@ -31,8 +31,16 @@ export function Header({ profile, title }: Props) {
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white/80 backdrop-blur-sm px-6 dark:border-zinc-800 dark:bg-zinc-950/80">
-      <h1 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{title}</h1>
+    <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 dark:border-zinc-800 dark:bg-zinc-950/80">
+      {/* Mobile: logo or app name; Desktop: just the title text */}
+      <div className="flex items-center gap-2">
+        <img
+          src="/logo.png"
+          alt="QRtrol"
+          className="h-20 w-20 rounded-xl object-contain md:hidden"
+        />
+        <h1 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{title}</h1>
+      </div>
 
       <div className="flex items-center gap-1">
         <button

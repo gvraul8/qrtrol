@@ -44,7 +44,7 @@ export function Sidebar({ role, companyName }: Props) {
       {/* Brand */}
       <div className="px-3 py-4 border-b border-gray-200 dark:border-zinc-800">
         <Image
-          src="/logo.png"
+          src="/logo.jpg"
           alt="QRtrol"
           width={200}
           height={200}

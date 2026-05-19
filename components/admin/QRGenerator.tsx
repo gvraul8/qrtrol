@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -31,12 +31,17 @@ export function QRGenerator({ companyId, durationSeconds = 20 }: Props) {
     return () => clearInterval(id)
   }, [secondsLeft])
 
-  // Refresh page data when QR expires so admin stats update automatically
+  // Refresh page data when QR expires naturally (no scan detected)
+  const qrWasActiveRef = useRef(false)
   useEffect(() => {
-    if (secondsLeft === 0 && qrDataUrl !== null) {
+    if (qrDataUrl !== null) qrWasActiveRef.current = true
+  }, [qrDataUrl])
+  useEffect(() => {
+    if (secondsLeft === 0 && qrWasActiveRef.current) {
+      qrWasActiveRef.current = false
       router.refresh()
     }
-  }, [secondsLeft, qrDataUrl, router])
+  }, [secondsLeft, router])
 
   const generate = useCallback(async () => {
     setLoading(true)
@@ -64,6 +69,7 @@ export function QRGenerator({ companyId, durationSeconds = 20 }: Props) {
     const label = entry.type === 'entry' ? 'Entrada' : 'Salida'
     toast.success(`${label} registrada`, { duration: 4000 })
     setTimeout(() => setJustFiched(false), 4000)
+    router.refresh()
   })
 
   // Progress for countdown ring

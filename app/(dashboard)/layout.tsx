@@ -35,11 +35,9 @@ export default async function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header profile={profile} title={companyName} />
         <main className="flex-1 overflow-y-auto">
-          <div className={`mx-auto max-w-2xl px-4 py-5 md:max-w-6xl md:px-6 md:py-8 ${
-            isEmployee ? 'pb-24 md:pb-8' : ''
-          }`}>{children}</div>
+          <div className={`mx-auto max-w-2xl px-4 py-5 md:max-w-6xl md:px-6 md:py-8 pb-24 md:pb-8`}>{children}</div>
         </main>
-        {isEmployee && <BottomNav />}
+        <BottomNav role={profile.role} />
       </div>
     </div>
   )

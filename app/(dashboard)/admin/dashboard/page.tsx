@@ -4,7 +4,9 @@ import { DashboardPageClient } from './DashboardPageClient'
 import { StatsCards } from '@/components/admin/StatsCards'
 import { RecentActivity } from '@/components/admin/RecentActivity'
 import { WeeklyHoursChart } from '@/components/admin/charts/WeeklyHoursChart'
-import type { TimeEntry } from '@/types/time-entry.types'
+import type { TimeEntry, ActiveWorker } from '@/types/time-entry.types'
+
+export const dynamic = 'force-dynamic'
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
@@ -51,10 +53,21 @@ export default async function AdminDashboardPage() {
   // Active now: first seen entry type per user today
   const seenUsers = new Set<string>()
   let activeNow = 0
+  const initialWorkers: ActiveWorker[] = []
   for (const e of todayEntries) {
     if (!seenUsers.has(e.user_id)) {
       seenUsers.add(e.user_id)
-      if (e.type === 'entry') activeNow++
+      if (e.type === 'entry') {
+        activeNow++
+        initialWorkers.push({
+          id: e.user_id,
+          company_id: companyId,
+          full_name: (e as TimeEntry).users?.full_name ?? 'Empleado',
+          email: (e as TimeEntry).users?.email ?? '',
+          avatar_url: (e as TimeEntry).users?.avatar_url ?? null,
+          checked_in_at: e.created_at,
+        })
+      }
     }
   }
 
@@ -115,6 +128,7 @@ export default async function AdminDashboardPage() {
         companyName={company?.name ?? 'QRtrol'}
         durationSeconds={company?.qr_duration_seconds ?? 20}
         logoUrl={company?.logo_url ?? null}
+        initialWorkers={initialWorkers}
       />
 
       <StatsCards

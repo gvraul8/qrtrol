@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Users, Clock } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,8 +16,16 @@ interface Props {
 }
 
 export function ActiveWorkers({ companyId, initialWorkers = [] }: Props) {
+  const router = useRouter()
   const [workers, setWorkers] = useState<ActiveWorker[]>(initialWorkers)
   const [loading, setLoading] = useState(!initialWorkers.length)
+
+  const fetchWorkers = useCallback(() => {
+    fetch(`/api/employees/active?company_id=${companyId}`)
+      .then((r) => r.json())
+      .then((d) => setWorkers(d.workers ?? []))
+      .catch(() => {})
+  }, [companyId])
 
   useEffect(() => {
     if (initialWorkers.length) return
@@ -27,13 +36,19 @@ export function ActiveWorkers({ companyId, initialWorkers = [] }: Props) {
       .finally(() => setLoading(false))
   }, [companyId, initialWorkers.length])
 
-  // Refresh list on any new time_entry
-  useRealtimeEntries(companyId, () => {
-    fetch(`/api/employees/active?company_id=${companyId}`)
-      .then((r) => r.json())
-      .then((d) => setWorkers(d.workers ?? []))
-      .catch(() => {})
-  })
+  // Sync whenever the server refreshes (router.refresh) and sends new initialWorkers
+  useEffect(() => {
+    setWorkers(initialWorkers)
+    setLoading(false)
+  }, [initialWorkers])
+
+  // Stable callback so the realtime subscription never re-subscribes unnecessarily
+  const handleNewEntry = useCallback(() => {
+    fetchWorkers()
+    router.refresh()
+  }, [fetchWorkers, router])
+
+  useRealtimeEntries(companyId, handleNewEntry)
 
   if (loading) {
     return (

@@ -2,17 +2,29 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, History, User } from 'lucide-react'
+import { Home, History, User, LayoutDashboard, Users, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types/database.types'
 
-const items = [
+const employeeItems = [
   { label: 'Inicio',    href: '/employee/dashboard', icon: Home },
   { label: 'Historial', href: '/employee/history',    icon: History },
   { label: 'Perfil',    href: '/employee/profile',    icon: User },
 ]
 
-export function BottomNav() {
+const adminItems = [
+  { label: 'Inicio',    href: '/admin/dashboard',  icon: LayoutDashboard },
+  { label: 'Empleados', href: '/admin/employees',   icon: Users },
+  { label: 'Ajustes',   href: '/admin/settings',    icon: Settings },
+]
+
+interface Props {
+  role: UserRole
+}
+
+export function BottomNav({ role }: Props) {
   const pathname = usePathname()
+  const items = role === 'admin' ? adminItems : employeeItems
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-gray-200 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 md:hidden">
