@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Search, FileDown, LogIn, LogOut, FileText } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, FileText } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmployeeFormModal } from '@/components/admin/EmployeeFormModal'
 import { EmployeeDownloadModal } from '@/components/admin/EmployeeDownloadModal'
 import { getInitials, formatDateTime } from '@/lib/utils'
@@ -55,47 +54,6 @@ export function EmployeesPageClient({ initialEmployees, companyId, initialEntrie
 
   // ── Hours tab ─────────────────────────────────────────────────────────────
   const [entries, setEntries] = useState(initialEntries ?? [])
-  const [hoursSearch, setHoursSearch] = useState('')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [exporting, setExporting] = useState(false)
-
-  const filteredEntries = entries.filter((e) => {
-    const name = (e.users?.full_name ?? '').toLowerCase()
-    const email = (e.users?.email ?? '').toLowerCase()
-    return name.includes(hoursSearch.toLowerCase()) || email.includes(hoursSearch.toLowerCase())
-  })
-
-  const handleFilter = async () => {
-    const params = new URLSearchParams({ company_id: companyId })
-    if (fromDate) params.set('from', fromDate)
-    if (toDate) params.set('to', toDate + 'T23:59:59')
-    const res = await fetch(`/api/attendance?${params}`)
-    const data = await res.json()
-    setEntries(data.entries ?? [])
-  }
-
-  const handleExport = async (format: 'pdf' | 'excel') => {
-    setExporting(true)
-    try {
-      const params = new URLSearchParams({ format, company_id: companyId })
-      if (fromDate) params.set('from', fromDate)
-      if (toDate) params.set('to', toDate + 'T23:59:59')
-      const res = await fetch(`/api/reports/export?${params}`)
-      if (!res.ok) throw new Error('Error al exportar')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `informe-qrtrol.${format === 'pdf' ? 'pdf' : 'xlsx'}`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Error al exportar el informe')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -104,14 +62,7 @@ export function EmployeesPageClient({ initialEmployees, companyId, initialEntrie
         <p className="text-sm text-zinc-500">{employees.length} en plantilla</p>
       </div>
 
-      <Tabs defaultValue="gestion">
-        <TabsList className="mb-4">
-          <TabsTrigger value="gestion">Gestión</TabsTrigger>
-          <TabsTrigger value="horas">Horas e informes</TabsTrigger>
-        </TabsList>
-
-        {/* ── Gestión tab ───────────────────────────────────────────────── */}
-        <TabsContent value="gestion" className="space-y-4">
+      <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
@@ -202,86 +153,7 @@ export function EmployeesPageClient({ initialEmployees, companyId, initialEntrie
               </div>
             )}
           </div>
-        </TabsContent>
-
-        {/* ── Horas tab ─────────────────────────────────────────────────── */}
-        <TabsContent value="horas" className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <p className="text-sm text-zinc-500">{filteredEntries.length} registros</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleExport('excel')} disabled={exporting} className="gap-1.5">
-                <FileDown className="h-3.5 w-3.5" /> Excel
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={exporting} className="gap-1.5">
-                <FileDown className="h-3.5 w-3.5" /> PDF
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-              <Input
-                placeholder="Buscar empleado…"
-                value={hoursSearch}
-                onChange={(e) => setHoursSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />
-            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
-            <Button onClick={handleFilter} size="sm">Filtrar</Button>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-zinc-800">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Empleado</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Tipo</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Fecha y hora</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.map((entry, i) => (
-                  <motion.tr
-                    key={entry.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="border-b border-gray-100 dark:border-zinc-800 hover:bg-blue-50/60 dark:hover:bg-zinc-800/30 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-7 w-7">
-                          {entry.users?.avatar_url && <AvatarImage src={entry.users.avatar_url} alt={entry.users.full_name} />}
-                          <AvatarFallback className="text-[10px]">{getInitials(entry.users?.full_name ?? '?')}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-zinc-900 dark:text-zinc-100 font-medium">{entry.users?.full_name ?? 'Empleado'}</p>
-                          <p className="text-xs text-zinc-500">{entry.users?.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={entry.type === 'entry' ? 'success' : 'secondary'}>
-                        {entry.type === 'entry'
-                          ? <><LogIn className="h-3 w-3 mr-1" />Entrada</>
-                          : <><LogOut className="h-3 w-3 mr-1" />Salida</>
-                        }
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-zinc-400">{formatDateTime(entry.created_at)}</td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-            {!filteredEntries.length && (
-              <div className="py-12 text-center text-sm text-zinc-500">Sin registros para los filtros seleccionados</div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+        </div>
 
       <EmployeeFormModal
         open={modalOpen}

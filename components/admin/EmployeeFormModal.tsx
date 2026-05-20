@@ -70,7 +70,7 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{employee ? 'Editar empleado' : 'Nuevo empleado'}</DialogTitle>
         </DialogHeader>

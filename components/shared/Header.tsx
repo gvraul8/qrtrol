@@ -73,8 +73,8 @@ export function Header({ profile, title }: Props) {
               Mi perfil
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-red-400 focus:text-red-400">
-              <LogOut className="h-4 w-4" />
+            <DropdownMenuItem onClick={handleSignOut} className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950/30">
+              <LogOut className="h-4 w-4 text-red-500" />
               Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -36,7 +36,9 @@ function toTime(date: Date) {
 
 /**
  * Groups raw entry/exit records into per-shift rows (one row per entry/exit pair).
- * If a day has two shifts, two rows appear for that date.
+ * Supports overnight shifts (e.g. 22:00 → 04:00 next day): records are paired
+ * in strict chronological order so a midnight boundary never breaks a pair.
+ * The resulting shifts are grouped by the date of the *entry* for display.
  * The `fecha` field is populated only on the first row of each day so that
  * multi-shift days render cleanly (blank date on subsequent shifts).
  */
@@ -45,11 +47,45 @@ export function buildDailySummary(entries: ExportEntry[]): {
   totalMinutes: number
   workingDays: number
 } {
-  const byDay = new Map<string, ExportEntry[]>()
-  for (const e of entries) {
-    const day = e.created_at.slice(0, 10)
-    if (!byDay.has(day)) byDay.set(day, [])
-    byDay.get(day)!.push(e)
+  // 1. Sort chronologically
+  const sorted = [...entries].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+
+  // 2. Pair each entry with the next exit in time order (overnight-safe)
+  type Pair = { entryDate: Date; exitDate: Date | null; entryDay: string }
+  const pairs: Pair[] = []
+  let pendingEntry: Date | null = null
+  let pendingEntryDay: string | null = null
+
+  for (const e of sorted) {
+    const ts = new Date(e.created_at)
+    if (e.type === 'entry') {
+      // Close any previous unmatched entry before starting a new one
+      if (pendingEntry !== null) {
+        pairs.push({ entryDate: pendingEntry, exitDate: null, entryDay: pendingEntryDay! })
+      }
+      pendingEntry = ts
+      pendingEntryDay = e.created_at.slice(0, 10)
+    } else if (e.type === 'exit') {
+      if (pendingEntry !== null) {
+        pairs.push({ entryDate: pendingEntry, exitDate: ts, entryDay: pendingEntryDay! })
+        pendingEntry = null
+        pendingEntryDay = null
+      }
+      // Orphan exit with no preceding entry — skip
+    }
+  }
+  // Trailing entry with no exit
+  if (pendingEntry !== null) {
+    pairs.push({ entryDate: pendingEntry, exitDate: null, entryDay: pendingEntryDay! })
+  }
+
+  // 3. Group pairs by the entry's calendar day
+  const byDay = new Map<string, Pair[]>()
+  for (const pair of pairs) {
+    if (!byDay.has(pair.entryDay)) byDay.set(pair.entryDay, [])
+    byDay.get(pair.entryDay)!.push(pair)
   }
 
   const rows: DayRow[] = []
@@ -57,15 +93,8 @@ export function buildDailySummary(entries: ExportEntry[]): {
   let workingDays = 0
 
   for (const day of [...byDay.keys()].sort()) {
-    const sorted = byDay
-      .get(day)!
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-
-    const ins = sorted.filter((e) => e.type === 'entry').map((e) => new Date(e.created_at))
-    const outs = sorted.filter((e) => e.type === 'exit').map((e) => new Date(e.created_at))
-
+    const dayPairs = byDay.get(day)!
     workingDays++
-    const pairs = Math.min(ins.length, outs.length)
 
     const dateLabel = new Date(`${day}T12:00:00`).toLocaleDateString('es-ES', {
       weekday: 'short',
@@ -74,28 +103,28 @@ export function buildDailySummary(entries: ExportEntry[]): {
       year: 'numeric',
     })
 
-    // One row per completed shift pair
-    for (let j = 0; j < pairs; j++) {
-      const mins = (outs[j].getTime() - ins[j].getTime()) / 60_000
-      totalMinutes += mins
-      rows.push({
-        fecha: j === 0 ? dateLabel : '',   // blank on 2nd+ shift of same day
-        entrada: toTime(ins[j]),
-        salida: toTime(outs[j]),
-        horas: formatMinutes(mins),
-        minutes: mins,
-      })
-    }
-
-    // Unpaired entries (no matching exit yet)
-    for (let j = pairs; j < ins.length; j++) {
-      rows.push({
-        fecha: j === 0 ? dateLabel : '',
-        entrada: toTime(ins[j]),
-        salida: '—',
-        horas: 'Sin salida',
-        minutes: 0,
-      })
+    for (let j = 0; j < dayPairs.length; j++) {
+      const { entryDate, exitDate } = dayPairs[j]
+      if (exitDate !== null) {
+        const mins = (exitDate.getTime() - entryDate.getTime()) / 60_000
+        totalMinutes += mins
+        const nextDay = exitDate.toISOString().slice(0, 10) !== entryDate.toISOString().slice(0, 10)
+        rows.push({
+          fecha: j === 0 ? dateLabel : '',   // blank on 2nd+ shift of same day
+          entrada: toTime(entryDate),
+          salida: nextDay ? `${toTime(exitDate)} (+1)` : toTime(exitDate),
+          horas: formatMinutes(mins),
+          minutes: mins,
+        })
+      } else {
+        rows.push({
+          fecha: j === 0 ? dateLabel : '',
+          entrada: toTime(entryDate),
+          salida: '—',
+          horas: 'Sin salida',
+          minutes: 0,
+        })
+      }
     }
   }
 

@@ -66,7 +66,7 @@ export function EmployeeDownloadModal({ employee, allEntries, onClose }: Props) 
 
   return (
     <Dialog open={!!employee} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Descargar informe mensual</DialogTitle>
         </DialogHeader>

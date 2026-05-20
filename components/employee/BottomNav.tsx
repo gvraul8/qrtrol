@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, History, User, LayoutDashboard, Users, Settings } from 'lucide-react'
+import { Home, History, User, LayoutDashboard, Users, Settings, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types/database.types'
 
@@ -15,6 +15,7 @@ const employeeItems = [
 const adminItems = [
   { label: 'Inicio',    href: '/admin/dashboard',  icon: LayoutDashboard },
   { label: 'Empleados', href: '/admin/employees',   icon: Users },
+  { label: 'Informes',  href: '/admin/reports',     icon: FileText },
   { label: 'Ajustes',   href: '/admin/settings',    icon: Settings },
 ]
 

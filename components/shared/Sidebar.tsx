@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  LayoutDashboard, QrCode, Users, Settings,
+  LayoutDashboard, QrCode, Users, Settings, FileText,
   Home, History, User, LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ interface NavItem { label: string; href: string; icon: React.ReactNode }
 const adminNav: NavItem[] = [
   { label: 'Inicio',     href: '/admin/dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: 'Empleados',  href: '/admin/employees',  icon: <Users className="h-4 w-4" /> },
+  { label: 'Informes',   href: '/admin/reports',    icon: <FileText className="h-4 w-4" /> },
   { label: 'Ajustes',    href: '/admin/settings',   icon: <Settings className="h-4 w-4" /> },
 ]
 
@@ -48,6 +49,7 @@ export function Sidebar({ role, companyName }: Props) {
           alt="QRtrol"
           width={200}
           height={200}
+          priority
           className="rounded-2xl object-contain w-full h-auto"
         />
       </div>

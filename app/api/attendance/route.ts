@@ -38,3 +38,45 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ entries: data })
 }
+
+// POST /api/attendance — create a manual time entry (admin only)
+export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, company_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || profile.role !== 'admin') {
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
+  }
+
+  const { user_id, type, created_at } = await request.json()
+  if (!user_id || !type || !created_at) {
+    return NextResponse.json({ error: 'Empleado, tipo y fecha son requeridos' }, { status: 400 })
+  }
+
+  // Ensure the target employee belongs to the same company
+  const { data: target } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', user_id)
+    .eq('company_id', profile.company_id)
+    .single()
+
+  if (!target) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 })
+
+  const { data: entry, error } = await supabase
+    .from('time_entries')
+    .insert({ user_id, company_id: profile.company_id, type, created_at, qr_session_id: null })
+    .select('*, users(full_name, email, avatar_url)')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ entry })
+}
