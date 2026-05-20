@@ -15,9 +15,9 @@ export default function ScanPage() {
 
   const [scanState, setScanState] = useState<ScanState>('idle')
   const [message, setMessage] = useState<string | null>(null)
-  const [attendanceType, setAttendanceType] = useState<'check_in' | 'check_out' | null>(null)
+  const [attendanceType, setAttendanceType] = useState<'entry' | 'exit' | null>(null)
 
-  const handleScan = async (type: 'check_in' | 'check_out') => {
+  const handleScan = async (type: 'entry' | 'exit') => {
     setScanState('loading')
     setAttendanceType(type)
 
@@ -83,7 +83,7 @@ export default function ScanPage() {
               <Button
                 size="lg"
                 className="w-full h-14 text-base"
-                onClick={() => handleScan('check_in')}
+                onClick={() => handleScan('entry')}
               >
                 <LogIn className="h-5 w-5 mr-2" />
                 Registrar entrada
@@ -92,7 +92,7 @@ export default function ScanPage() {
                 size="lg"
                 variant="outline"
                 className="w-full h-14 text-base"
-                onClick={() => handleScan('check_out')}
+                onClick={() => handleScan('exit')}
               >
                 <LogOut className="h-5 w-5 mr-2" />
                 Registrar salida
@@ -104,7 +104,7 @@ export default function ScanPage() {
             <div className="flex flex-col items-center gap-4 py-6 text-zinc-500">
               <Loader2 className="h-10 w-10 animate-spin" />
               <p className="text-sm">
-                Registrando {attendanceType === 'check_in' ? 'entrada' : 'salida'}…
+                Registrando {attendanceType === 'entry' ? 'entrada' : 'salida'}…
               </p>
             </div>
           )}
