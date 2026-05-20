@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 // Direct fetch helper — avoids the supabase-js v2 Headers.append bug where the
 // bearer token accumulates across middleware layers when using auth.admin methods.
 function adminAuthHeaders() {
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').split(/[\r\n]+/)[0].trim()
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    Authorization: `Bearer ${key}`,
+    apikey: key,
   }
 }
 

@@ -8,23 +8,14 @@ import type { Database } from '@/types/database.types'
  */
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').replace(/[\r\n\s]/g, '')
+  // Split by newlines and take the first non-empty line to handle env vars
+  // that were accidentally pasted with line breaks or duplicate values.
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').split(/[\r\n]+/)[0].trim()
 
   return createClient<Database>(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
-    },
-    global: {
-      // Workaround: supabase-js v2 middleware layers call Headers.append for
-      // Authorization on each pass, causing the token to duplicate when Next.js
-      // also patches the global fetch. Reset the header to a single value here.
-      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-        const headers = new Headers(init?.headers)
-        headers.set('Authorization', `Bearer ${serviceKey}`)
-        headers.set('apikey', serviceKey)
-        return fetch(input, { ...init, headers })
-      },
     },
   })
 }

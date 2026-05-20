@@ -9,10 +9,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // the Auth Admin REST API with a fresh fetch to sidestep the issue entirely.
 // ---------------------------------------------------------------------------
 function adminAuthHeaders() {
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').split(/[\r\n]+/)[0].trim()
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    Authorization: `Bearer ${key}`,
+    apikey: key,
   }
 }
 
