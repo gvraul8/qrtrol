@@ -45,14 +45,49 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { full_name, email, role = 'employee' } = body
+  const { full_name, email, role = 'employee', mode = 'invite', password } = body
 
   if (!full_name || !email) {
     return NextResponse.json({ error: 'Nombre y email requeridos' }, { status: 400 })
   }
 
-  // Invite via Supabase admin (requires service-role)
   const adminClient = createAdminClient()
+
+  if (mode === 'direct') {
+    if (!password || password.length < 6) {
+      return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+    }
+
+    const { data: created, error } = await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name, company_id: adminProfile.company_id, role },
+    })
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Insert into public.users explicitly in case the trigger doesn't fire
+    const { error: profileError } = await adminClient
+      .from('users')
+      .upsert({
+        id: created.user.id,
+        company_id: adminProfile.company_id,
+        full_name,
+        email,
+        role,
+      })
+
+    if (profileError) {
+      // Roll back: delete the auth user to avoid orphaned records
+      await adminClient.auth.admin.deleteUser(created.user.id)
+      return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, user_id: created.user.id })
+  }
+
+  // Default: invite via email
   const origin = new URL(request.url).origin
   const { data: invited, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: { full_name, company_id: adminProfile.company_id, role },

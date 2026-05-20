@@ -13,10 +13,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { UserProfile } from '@/types/auth.types'
 
+type CreationMode = 'invite' | 'direct'
+
 interface FormValues {
   full_name: string
   email: string
   role: 'admin' | 'employee'
+  password: string
 }
 
 interface Props {
@@ -28,15 +31,24 @@ interface Props {
 
 export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
   const [saving, setSaving] = useState(false)
+  const [mode, setMode] = useState<CreationMode>('invite')
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       full_name: employee?.full_name ?? '',
       email: employee?.email ?? '',
       role: employee?.role ?? 'employee',
+      password: '',
     },
   })
 
   const role = watch('role')
+
+  const handleClose = () => {
+    reset()
+    setMode('invite')
+    onClose()
+  }
 
   const onSubmit = async (values: FormValues) => {
     setSaving(true)
@@ -50,15 +62,24 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
         if (!res.ok) throw new Error((await res.json()).error ?? 'Error al actualizar')
         toast.success('Empleado actualizado')
       } else {
+        const body: Record<string, string> = {
+          full_name: values.full_name,
+          email: values.email,
+          role: values.role,
+          mode,
+        }
+        if (mode === 'direct') body.password = values.password
+
         const res = await fetch('/api/employees', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
+          body: JSON.stringify(body),
         })
         if (!res.ok) throw new Error((await res.json()).error ?? 'Error al crear')
-        toast.success('Empleado invitado por email')
+        toast.success(mode === 'invite' ? 'Invitación enviada por email' : 'Usuario creado correctamente')
       }
       reset()
+      setMode('invite')
       onSaved()
       onClose()
     } catch (err) {
@@ -69,7 +90,7 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{employee ? 'Editar empleado' : 'Nuevo empleado'}</DialogTitle>
@@ -87,16 +108,68 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
           </div>
 
           {!employee && (
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                {...register('email', { required: 'Email requerido' })}
-                placeholder="ana@empresa.com"
-              />
-              {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
-            </div>
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register('email', { required: 'Email requerido' })}
+                  placeholder="ana@empresa.com"
+                />
+                {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Método de acceso</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode('invite')}
+                    className={`rounded-md border px-3 py-2 text-sm transition-colors text-left ${
+                      mode === 'invite'
+                        ? 'border-primary bg-primary/10 text-primary font-medium'
+                        : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="font-medium">Enviar invitación</div>
+                    <div className="text-xs opacity-70 mt-0.5">El empleado establece su contraseña</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('direct')}
+                    className={`rounded-md border px-3 py-2 text-sm transition-colors text-left ${
+                      mode === 'direct'
+                        ? 'border-primary bg-primary/10 text-primary font-medium'
+                        : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="font-medium">Crear con contraseña</div>
+                    <div className="text-xs opacity-70 mt-0.5">Tú asignas la contraseña inicial</div>
+                  </button>
+                </div>
+              </div>
+
+              {mode === 'direct' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Contraseña temporal</Label>
+                  <Input
+                    id="password"
+                    type="text"
+                    {...register('password', {
+                      required: mode === 'direct' ? 'Contraseña requerida' : false,
+                      minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                    })}
+                    placeholder="Ej: 1234ab"
+                    autoComplete="off"
+                  />
+                  {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    El empleado podrá cambiarla desde su perfil.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div className="space-y-1.5">
@@ -113,11 +186,17 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Guardando…' : employee ? 'Guardar cambios' : 'Invitar empleado'}
+              {saving
+                ? 'Guardando…'
+                : employee
+                  ? 'Guardar cambios'
+                  : mode === 'invite'
+                    ? 'Enviar invitación'
+                    : 'Crear usuario'}
             </Button>
           </DialogFooter>
         </form>

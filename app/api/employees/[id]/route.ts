@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // PUT /api/employees/[id]
 export async function PUT(
@@ -77,7 +78,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 })
   }
 
-  const { error } = await supabase.from('users').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // Delete from auth.users (cascades to public.users via ON DELETE CASCADE)
+  const adminClient = createAdminClient()
+  const { error: authError } = await adminClient.auth.admin.deleteUser(id)
+  if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
+
   return NextResponse.json({ success: true })
 }
