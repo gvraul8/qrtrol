@@ -59,7 +59,11 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ full_name: values.full_name, role: values.role }),
         })
-        if (!res.ok) throw new Error((await res.json()).error ?? 'Error al actualizar')
+        if (!res.ok) {
+          const text = await res.text()
+          const json = text ? JSON.parse(text) : {}
+          throw new Error(json.error ?? 'Error al actualizar')
+        }
         toast.success('Empleado actualizado')
       } else {
         const body: Record<string, string> = {
@@ -75,7 +79,11 @@ export function EmployeeFormModal({ open, onClose, onSaved, employee }: Props) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
-        if (!res.ok) throw new Error((await res.json()).error ?? 'Error al crear')
+        if (!res.ok) {
+          const text = await res.text()
+          const json = text ? JSON.parse(text) : {}
+          throw new Error(json.error ?? 'Error al crear')
+        }
         toast.success(mode === 'invite' ? 'Invitación enviada por email' : 'Usuario creado correctamente')
       }
       reset()
