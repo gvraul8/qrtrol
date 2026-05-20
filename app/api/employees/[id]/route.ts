@@ -1,6 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+
+// Direct fetch helper — avoids the supabase-js v2 Headers.append bug where the
+// bearer token accumulates across middleware layers when using auth.admin methods.
+function adminAuthHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  }
+}
+
+async function adminDeleteUser(userId: string) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${userId}`,
+    { method: 'DELETE', headers: adminAuthHeaders() },
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    const json = text ? JSON.parse(text) : {}
+    return { error: json.msg ?? json.message ?? 'Error al eliminar usuario' }
+  }
+  return { error: null }
+}
 
 // PUT /api/employees/[id]
 export async function PUT(
@@ -79,9 +101,8 @@ export async function DELETE(
   }
 
   // Delete from auth.users (cascades to public.users via ON DELETE CASCADE)
-  const adminClient = createAdminClient()
-  const { error: authError } = await adminClient.auth.admin.deleteUser(id)
-  if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
+  const { error: authError } = await adminDeleteUser(id)
+  if (authError) return NextResponse.json({ error: authError }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }
