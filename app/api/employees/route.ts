@@ -29,7 +29,8 @@ async function adminCreateUser(payload: {
     headers: adminAuthHeaders(),
     body: JSON.stringify({ ...payload, email_confirm: true }),
   })
-  const json = await res.json()
+  const text = await res.text()
+  const json = text ? JSON.parse(text) : {}
   if (!res.ok) return { user: null, error: json.msg ?? json.message ?? 'Error al crear usuario' }
   return { user: json as { id: string }, error: null }
 }
@@ -51,7 +52,8 @@ async function adminInviteUser(payload: {
     headers: adminAuthHeaders(),
     body: JSON.stringify(payload),
   })
-  const json = await res.json()
+  const text = await res.text()
+  const json = text ? JSON.parse(text) : {}
   if (!res.ok) return { user: null, error: json.msg ?? json.message ?? 'Error al invitar usuario' }
   return { user: json as { id: string }, error: null }
 }
