@@ -15,5 +15,16 @@ export function createAdminClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      // Workaround: supabase-js v2 middleware layers call Headers.append for
+      // Authorization on each pass, causing the token to duplicate when Next.js
+      // also patches the global fetch. Reset the header to a single value here.
+      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers)
+        headers.set('Authorization', `Bearer ${serviceKey}`)
+        headers.set('apikey', serviceKey)
+        return fetch(input, { ...init, headers })
+      },
+    },
   })
 }
