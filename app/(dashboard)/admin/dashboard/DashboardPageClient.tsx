@@ -27,8 +27,6 @@ export function DashboardPageClient({ companyId, companyName, durationSeconds, l
 
   useEffect(() => {
     setLastActivity(Date.now())
-    const stored = localStorage.getItem('qrtrol_logo_url')
-    if (stored) setLogoUrl(stored)
 
     const updateTime = () => {
       const now = new Date()

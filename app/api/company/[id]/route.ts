@@ -23,11 +23,20 @@ export async function PUT(
   }
 
   const body = await request.json()
-  const update: { name?: string; address?: string | null; qr_duration_seconds?: number } = {}
+  const update: { name?: string; address?: string | null; qr_duration_seconds?: number; logo_url?: string | null } = {}
   if (body.name) update.name = String(body.name)
   if (body.address !== undefined) update.address = body.address ?? null
   if (body.qr_duration_seconds) {
     update.qr_duration_seconds = Math.min(Math.max(Number(body.qr_duration_seconds), 10), 300)
+  }
+  if (body.logo_url !== undefined) {
+    if (body.logo_url === null || body.logo_url === '') {
+      update.logo_url = null
+    } else if (typeof body.logo_url === 'string' && body.logo_url.startsWith('data:image/')) {
+      update.logo_url = body.logo_url
+    } else {
+      return NextResponse.json({ error: 'Logo inválido' }, { status: 400 })
+    }
   }
 
   const { data, error } = await supabase

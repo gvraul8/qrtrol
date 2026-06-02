@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Upload, X } from 'lucide-react'
@@ -35,11 +35,6 @@ export function SettingsPageClient({ company, userEmail }: Props) {
   const [confirmPw, setConfirmPw] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    const stored = localStorage.getItem('qrtrol_logo_url')
-    if (stored) setLogoPreview(stored)
-  }, [])
-
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -48,17 +43,15 @@ export function SettingsPageClient({ company, userEmail }: Props) {
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string
       setLogoPreview(dataUrl)
-      localStorage.setItem('qrtrol_logo_url', dataUrl)
-      toast.success('Logo guardado · se usará en el salvapantallas')
+      toast.success('Logo preparado para guardar. Pulsa "Guardar ajustes" para persistirlo.')
     }
     reader.readAsDataURL(file)
   }
 
   const removeLogo = () => {
     setLogoPreview(null)
-    localStorage.removeItem('qrtrol_logo_url')
     if (fileRef.current) fileRef.current.value = ''
-    toast.success('Logo eliminado')
+    toast.success('Logo listo para eliminar. Pulsa "Guardar ajustes" para persistir el cambio.')
   }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -95,7 +88,10 @@ export function SettingsPageClient({ company, userEmail }: Props) {
       const res = await fetch(`/api/company/${company.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          logo_url: logoPreview ?? null,
+        }),
       })
       if (!res.ok) throw new Error((await res.json()).error ?? 'Error al guardar')
       toast.success('Ajustes guardados')
